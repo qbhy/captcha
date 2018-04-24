@@ -14,13 +14,13 @@ class LumenCaptchaController extends Controller
     /**
      * get CAPTCHA
      *
-     * @param \Mews\Captcha\Captcha $captcha
      * @param string $config
+     *
      * @return \Intervention\Image\ImageManager->response
      */
-    public function getCaptcha(Captcha $captcha, $config = 'default')
+    public function getCaptcha($codeKey, $config = 'default')
     {
-        return $captcha->create($config);
+        return Captcha::instance($codeKey)->create($config);
     }
 
 }

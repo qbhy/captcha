@@ -8,7 +8,8 @@ use Illuminate\Support\ServiceProvider;
  * Class CaptchaServiceProvider
  * @package Mews\Captcha
  */
-class CaptchaServiceProvider extends ServiceProvider {
+class CaptchaServiceProvider extends ServiceProvider
+{
 
     /**
      * Boot the service provider.
@@ -19,23 +20,24 @@ class CaptchaServiceProvider extends ServiceProvider {
     {
         // Publish configuration files
         $this->publishes([
-            __DIR__.'/../config/captcha.php' => config_path('captcha.php')
+            __DIR__ . '/../config/captcha.php' => config_path('captcha.php'),
         ], 'config');
 
         // HTTP routing
         if (strpos($this->app->version(), 'Lumen') !== false) {
-           $this->app->get('captcha[/{config}]', 'Mews\Captcha\LumenCaptchaController@getCaptcha');
+            $this->app['router']->get('captcha/{codeKey}/[/{config}]',
+                'Mews\Captcha\LumenCaptchaController@getCaptcha');
         } else {
-            if ((double) $this->app->version() >= 5.2) {
-                $this->app['router']->get('captcha/{config?}', '\Mews\Captcha\CaptchaController@getCaptcha')->middleware('web');
+            if ((double)$this->app->version() >= 5.2) {
+                $this->app['router']->get('captcha/{config?}', '\Mews\Captcha\CaptchaController@getCaptcha')
+                                    ->middleware('web');
             } else {
                 $this->app['router']->get('captcha/{config?}', '\Mews\Captcha\CaptchaController@getCaptcha');
             }
         }
 
         // Validator extensions
-        $this->app['validator']->extend('captcha', function($attribute, $value, $parameters)
-        {
+        $this->app['validator']->extend('captcha', function ($attribute, $value, $parameters) {
             return captcha_check($value);
         });
     }
@@ -49,21 +51,19 @@ class CaptchaServiceProvider extends ServiceProvider {
     {
         // Merge configs
         $this->mergeConfigFrom(
-            __DIR__.'/../config/captcha.php', 'captcha'
+            __DIR__ . '/../config/captcha.php', 'captcha'
         );
 
         // Bind captcha
-        $this->app->bind('captcha', function($app)
-        {
-            return new Captcha(
-                $app['Illuminate\Filesystem\Filesystem'],
-                $app['Illuminate\Config\Repository'],
-                $app['Intervention\Image\ImageManager'],
-                $app['Illuminate\Session\Store'],
-                $app['Illuminate\Hashing\BcryptHasher'],
-                $app['Illuminate\Support\Str']
-            );
+
+        $codeKey =
+            $this->app['request']->get('code_key') ?? $this->app['request']->header('code_key') ?? str_random(40);
+
+        $this->app->bind(Captcha::class, function ($app) use ($codeKey) {
+            return Captcha::instance($codeKey);
         });
+
+        $this->app->alias(Captcha::class, 'captcha');
     }
 
 }
